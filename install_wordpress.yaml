@@ -1,40 +1,173 @@
+---
 Description: CloudFormation install wordpress
 Parameters: 
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair
-  DBName:
-    Default: wordpressdb
-    Description: The WordPress databse name
-    Type: String 
-    MinLength: '1'
-    MaxLength: '64'
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric 
-  DBUser:
-    NoEcho: 'true'
-    Description: The WordPress database admin account username
-    Type: String 
-    MinLength: '1'
-    MaxLength: '16'
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric characters
-  DBPassword: 
-    NoEcho: 'true'
-    Description: The wordpress database admin account username
-    Type: String
-    MinLength: '8'
-    MaxLength: '41'
-    AllowedPattern: '[a-zA-Z0-9]*'  
-    ConstraintDescription: must contain only alphanumeric characters.
-
-
 
 Resources:
+# creating the vpc.   
+  VPC:
+    Type: AWS::EC2::VPC 
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationVPC"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create an internet gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VPC
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormatioInternetGateway"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+# create a public subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet 
+    Properties: 
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.10.0/24
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPublicSubnet"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create a private subnet
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet 
+    Properties: 
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.20.0/24
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPrivateSubnet"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create public route table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable 
+    properties:
+      VpcId: !Ref VPC 
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPublicRouteTable"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+  PublicRoute:
+    Type: AWS::EC2::Route
+    # will not start unless AttachGateway finishes
+    DependsOn: AttachGateway
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      # the traffic for local locations are default in routing
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway 
+# create a private route table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPrivateRouteTable"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+  PrivateRoute: 
+    Type: AWS::EC2::Route 
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway 
+#create a NAT Gateway
+  NATGateway:
+    Type: AWS::EC2::NatGateway 
+    Properties: 
+      AllocationId: !GetAtt ElasticIPAddress.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationNATGateway"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+  ElasticIPAddress:
+    Type: AWS::EC2::EIP 
+    Properties: 
+      Domain: VPC 
+## Attaching the public submets to the public route tables,
+## and attach the private subnet to private route tables  
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation 
+    Properties: 
+      SubnetId: !Ref PublicSubnet 
+      RouteTableId: !Ref PublicRouteTable
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRoutTable 
+# create a security Group
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Enable tcp access on ports 80 and 22"
+      GroupName: MySecurityGroup
+      VpcId: 
+        Ref: VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: '80'
@@ -44,25 +177,40 @@ Resources:
           FromPort: '22'
           ToPort: '22'
           CidrIp: 184.185.72.92/32
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationSG"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create an EC2 instance 
   WebServer:
     Type: AWS::EC2::Instance
     Properties:
       Tags:
         - Key: "Name"
-          Value: "TestCloudFormation"
+          Value: "CloudFormationServer"
         - Key: "Owner"
           Value: "chen.xu"
         - Key: "ExpirationDate"
-          Value: "2019-06-18"
+          Value: "2019-06-21"
         - Key: "Project"
           Value: "training"
         - Key: "Environment"
           Value: "Development"
-      ImageId: ami-0cc96feef8c6bbff3
+      # us-east-1 ImageId: ami-0cc96feef8c6bbff3
+      ImageId: ami-07669fc90e6e6cc47
       KeyName: !Ref KeyName
       InstanceType: t2.micro
-      SecurityGroups:
+      PrivateIpAddress: 10.1.10.1/32
+      SecurityGroupIds:
         - Ref: WebSecurityGroup
+      SubnetId: !Ref PublicSubnet 
 ####################################################################
       UserData: !Base64
         'Fn::Join':
@@ -75,7 +223,6 @@ Resources:
             - '         --stack '
             - !Ref 'AWS::StackName'
             - '         -- resource WebServer '
-            - '         --configsets wordpress_install '
             - '         --region '
             - !Ref 'AWS::Region'
             - |+

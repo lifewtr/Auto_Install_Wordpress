@@ -1,0 +1,17 @@
+creating a vpc on cloud formation
+1. create a VPC
+2. create a public subnet
+3. create a private subnet
+4. make a public routing table
+5. make a public route
+6. make a private routing table
+7. make a private route
+8. make an internet gateway
+9. make a NAT gateway
+10. make an Elatic IP Address
+11. attach the internet gateway to VPC
+12. associate the public subnet to the public routing table
+13. associate the private subnet to the private routing table
+14. gives the NAT gateway an Elastic IP Address
+15. build a security group
+16. build an EC2 instance
