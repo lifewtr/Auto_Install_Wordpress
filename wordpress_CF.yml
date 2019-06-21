@@ -52,9 +52,28 @@ Resources:
     Properties: 
       VpcId: !Ref VPC
       CidrBlock: 10.1.10.0/24
+      AvailabilityZone: "us-west-2c"
       Tags:
         - Key: "Name"
           Value: "CloudFormationPublicSubnet"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create a public subnet
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet 
+    Properties: 
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.30.0/24
+      AvailabilityZone: "us-west-2b"
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPublicSubnet2"
         - Key: "Owner"
           Value: "chen.xu"
         - Key: "ExpirationDate"
@@ -69,9 +88,28 @@ Resources:
     Properties: 
       VpcId: !Ref VPC
       CidrBlock: 10.1.20.0/24
+      AvailabilityZone: "us-west-2c"
       Tags:
         - Key: "Name"
           Value: "CloudFormationPrivateSubnet"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create a private subnet
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.40.0/24
+      AvailabilityZone: "us-west-2b"
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationPrivateSubnet2"
         - Key: "Owner"
           Value: "chen.xu"
         - Key: "ExpirationDate"
@@ -104,7 +142,13 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       # the traffic for local locations are default in routing
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway 
+      GatewayId: !Ref InternetGateway
+  # PublicRoute2: 
+  #   Type: AWS::EC2::Route 
+  #   Properties:
+  #     RouteTableId: !Ref PublicRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NATGateway
 # create a private route table
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -126,8 +170,8 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NATGateway 
-#create a NAT Gateway
+      NatGatewayId: !Ref NATGateway
+# create a NAT Gateway
   NATGateway:
     Type: AWS::EC2::NatGateway 
     Properties: 
@@ -147,7 +191,7 @@ Resources:
   ElasticIPAddress:
     Type: AWS::EC2::EIP 
     Properties: 
-      Domain: VPC 
+      Domain: VPC
 ## Attaching the public submets to the public route tables,
 ## and attach the private subnet to private route tables  
   PublicSubnetRouteTableAssociation:
@@ -155,10 +199,20 @@ Resources:
     Properties: 
       SubnetId: !Ref PublicSubnet 
       RouteTableId: !Ref PublicRouteTable
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation 
+    Properties: 
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
   PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties: 
       SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable 
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable 
 # create a security Group
   WebSecurityGroup:
@@ -188,6 +242,59 @@ Resources:
           Value: "training"
         - Key: "Environment"
           Value: "Development"
+# create an elastic ip
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC
+      InstanceId: !Ref WebServer
+# create an RDS instance
+  rdsDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllowMajorVersionUpgrade: true
+      AutoMinorVersionUpgrade: true
+      DBName: myTestRDS
+      DBInstanceClass: db.t2.micro
+      DBSubnetGroupName: !Ref rdsDBSubnetGroup
+      Engine: mySQL
+      EngineVersion: "5.7.22"
+      AllocatedStorage: "100"
+      MasterUserPassword: "password"
+      MasterUsername: "user"
+      MultiAZ: false
+      VPCSecurityGroups:
+        - !Ref WebSecurityGroup
+      Tags:
+        - Key: "Name"
+          Value: "RDSInstance"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+# create a DB subnet group
+  rdsDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DB subnet group
+      SubnetIds:
+        - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: "Name"
+          Value: "RDSSubnetGroup"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
 # create an EC2 instance 
   WebServer:
     Type: AWS::EC2::Instance
@@ -209,28 +316,49 @@ Resources:
       InstanceType: t2.micro
       SecurityGroupIds:
         - Ref: WebSecurityGroup
-      SubnetId: !Ref PublicSubnet 
+      SubnetId: !Ref PublicSubnet2
 ####################################################################
-      UserData: !Base64
-        'Fn::Join':
-          - ''
-          - - |
-              #!/bin/bash -xe
-            - |
-              sudo yum update -y aws-cfn-bootstrap
-            - '/opt/aws/bin/cfn-init -v '
-            - '         --stack '
-            - !Ref 'AWS::StackName'
-            - '         -- resource WebServer '
-            - '         --region '
-            - !Ref 'AWS::Region'
-            - |+
+      UserData: 
+        Fn::Base64:
+          !Sub |
+              #!/bin/bash -ex
+              HOMEDIR=/home/ec2-user;
+              cd ~;
+              echo 'testInput' > ~/textfile;
+              yum update -y;
+              yum install git -y;
+              git clone git://github.com/chef/chef-repo.git;
+              mkdir -p ~/chef-repo/.chef;
+              wget https://packages.chef.io/files/stable/chefdk/4.0.60/el/7/chefdk-4.0.60-1.el7.x86_64.rpm
+              rpm -Uvh chefdk-4.0.60-1.el7.x86_64.rpm
+              chef verify -yes 
+              git clone https://github.com/lifewtr/chefstarter.git
+              cd chefstarter 
+              unzip chef-starter.zip
+              
 
-            - '/opt/aws/bin/cfn-signal -e $? '
-            - '         --stack '
-            - !Ref 'AWS::StackName'
-            - '         --resource WebServer '
-            - '         --region '
-            - !Ref 'AWS::Region'
-            - |+
+
 ####################################################################
+# create an EC2 instance 
+  WebServer2:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "CloudFormationServer"
+        - Key: "Owner"
+          Value: "chen.xu"
+        - Key: "ExpirationDate"
+          Value: "2019-06-21"
+        - Key: "Project"
+          Value: "training"
+        - Key: "Environment"
+          Value: "Development"
+      # us-east-1 ImageId: ami-0cc96feef8c6bbff3
+      ImageId: ami-07669fc90e6e6cc47
+      KeyName: !Ref KeyName
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - Ref: WebSecurityGroup
+      SubnetId: !Ref PublicSubnet
+
