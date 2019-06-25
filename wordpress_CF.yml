@@ -261,7 +261,7 @@ Resources:
       EngineVersion: "5.7.22"
       AllocatedStorage: "100"
       MasterUserPassword: "password"
-      MasterUsername: "user"
+      MasterUsername: "userChenTest"
       MultiAZ: false
       VPCSecurityGroups:
         - !Ref WebSecurityGroup
