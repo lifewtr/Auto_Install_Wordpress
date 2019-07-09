@@ -335,6 +335,18 @@ Resources:
               git clone https://github.com/lifewtr/chefstarter.git
               cd chefstarter 
               unzip chef-starter.zip
+              cd ~/chef-repo/.chef;
+              git clone https://github.com/lifewtr/testserverkey
+              cd testserverkey 
+              cp chenxu.pem ~/chef-repo/.chef 
+              cd ../cookbooks
+              knife download /cookbooks 
+              cd wordpress
+              
+
+
+
+
               
 
 
