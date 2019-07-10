@@ -327,22 +327,15 @@ Resources:
               echo 'testInput' > ~/textfile;
               yum update -y;
               yum install git -y;
-              git clone git://github.com/chef/chef-repo.git;
-              mkdir -p ~/chef-repo/.chef;
               wget https://packages.chef.io/files/stable/chefdk/4.0.60/el/7/chefdk-4.0.60-1.el7.x86_64.rpm
-              rpm -Uvh chefdk-4.0.60-1.el7.x86_64.rpm
-              chef verify -yes 
+              rpm -Uvh chefdk-4.0.60-1.el7.x86_64.rpm 
               git clone https://github.com/lifewtr/chefstarter.git
               cd chefstarter 
               unzip chef-starter.zip
-              cd ~/chef-repo/.chef;
-              git clone https://github.com/lifewtr/testserverkey
-              cd testserverkey 
-              cp chenxu.pem ~/chef-repo/.chef 
-              cd ../cookbooks
+              cd chef-repo/cookbooks
               knife download /cookbooks 
               cd wordpress
-              
+
 
 
 
